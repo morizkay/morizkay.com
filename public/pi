@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Pi Chrome installer — https://github.com/morizkay/pi-chrome
+set -euo pipefail
+
+EXTENSION_ID="fbenbmfibkkdkhcholmgnkkpadbphkgd"
+DEST="$HOME/.pi-chrome"
+PACKAGE="@morizkay/pi-chrome"
+
+say() { printf '\033[1;32m==>\033[0m %s\n' "$1"; }
+die() { printf '\033[1;31merror:\033[0m %s\n' "$1" >&2; exit 1; }
+
+command -v node >/dev/null || die "Node.js >= 18 is required. Install it from https://nodejs.org then re-run this script."
+command -v npm >/dev/null || die "npm is required."
+
+NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+[ "$NODE_MAJOR" -ge 18 ] || die "Node.js >= 18 required, found $(node -v)."
+
+say "Downloading Pi Chrome from npm…"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+cd "$TMP"
+npm pack "$PACKAGE" --silent
+tar -xzf *.tgz
+rm -rf "$DEST"
+mkdir -p "$(dirname "$DEST")"
+mv package "$DEST"
+
+say "Registering native messaging host…"
+node "$DEST/bin/cli.js" setup "$EXTENSION_ID" >/dev/null
+
+printf '\n\033[1;32mDone!\033[0m Two steps left (one-time):\n\n'
+cat <<EOF
+  1. Open chrome://extensions
+  2. Enable "Developer mode" → "Load unpacked" → select:
+
+       $DEST
+
+Then open https://pi.dev/packages — installed packages get a green badge.
+Re-run this script any time to update.
+EOF
